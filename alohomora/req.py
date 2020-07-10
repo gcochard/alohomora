@@ -283,7 +283,12 @@ class DuoRequestsProvider(WebProvider):
         frame_url = 'https://%s/frame/web/v1/auth?tx=%s&parent=%s&v=2.3' % \
             (duo_host, duo_sig, response_1fa.url)
         LOG.info('Getting Duo iframe')
-        (response, soup) = self._do_get(frame_url)
+        # if the duo integration has an allowed origin list, we must
+        # pass the page URL as a Referer header in addition to using
+        # the `parent` query parameter in the frame URL
+        (response, soup) = self._do_get(frame_url, headers={
+            'Referer': response_1fa.url,
+        })
 
         payload = {}
         for inputtag in soup.find_all('input'):
