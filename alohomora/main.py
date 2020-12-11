@@ -35,6 +35,7 @@ import alohomora
 import alohomora.keys
 from alohomora.keys import DURATION_MIN, DURATION_MAX
 import alohomora.req
+import alohomora.gcpreq
 import alohomora.saml
 
 DEFAULT_AWS_PROFILE = 'saml'
@@ -168,7 +169,14 @@ class Main(object):
         #
         # Authenticate the user
         #
-        provider = alohomora.req.DuoRequestsProvider(idp_url, auth_method)
+        cloud = self._get_config('cloud', None)
+        if cloud == 'AWS':
+            provider = alohomora.req.DuoRequestsProvider(idp_url, auth_method)
+        elif cloud == 'GCP':
+            provider = alohomora.gcpreq.DuoRequestsProvider(auth_method)
+        else:
+            alohomora.die("Oops, don't forget to provide a cloud")
+
         (okay, response) = provider.login_one_factor(username, password)
         assertion = None
 
@@ -183,7 +191,10 @@ class Main(object):
             LOG.info('One-factor OK')
             assertion = response
 
-        awsroles = alohomora.saml.get_roles(assertion)
+        if cloud == 'AWS':
+            awsroles = alohomora.saml.get_roles(assertion)
+        elif cloud == 'GCP':
+            gcpprojects = provider.get_projects()
 
         # If I have more than one role, ask the user which one they want,
         # otherwise just proceed
